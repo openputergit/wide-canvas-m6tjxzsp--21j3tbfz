@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuestionBank Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .drag-active { border: 2px dashed #4F46E5 !important; }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .dark { background-color: #1a1a1a; color: #ffffff; }
+    </style>
+</head>
+<body class="bg-gray-50 transition-colors duration-200">
+    <nav class="bg-white shadow-sm p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-indigo-600">QuestionBank Analysis</h1>
+        <div class="flex items-center gap-4">
+            <button id="darkModeToggle" class="p-2 rounded-full hover:bg-gray-100">
+                <i class="bi bi-moon"></i>
+            </button>
+            <div id="authButtons">
+                <button onclick="showModal('loginModal')" class="px-4 py-2 text-indigo-600">Login</button>
+                <button onclick="showModal('signupModal')" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Sign Up</button>
+            </div>
+            <div id="userProfile" class="hidden">
+                <span class="mr-2">Welcome, <span id="userName">User</span></span>
+                <button onclick="logout()" class="text-red-500">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <div id="uploadSection" class="max-w-2xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-4">Upload Question Papers</h2>
+                <p class="text-gray-600">Analyze question frequency and patterns</p>
+            </div>
+
+            <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-indigo-500 transition-colors">
+                <i class="bi bi-cloud-upload text-4xl text-gray-400"></i>
+                <p class="mt-4 text-gray-600">Drag and drop your files here or click to browse</p>
+                <p class="text-sm text-gray-500 mt-2">Supported formats: PNG, JPG, PDF, DOC</p>
+                <input type="file" id="fileInput" class="hidden" multiple accept=".png,.jpg,.jpeg,.pdf,.doc,.docx">
+            </div>
+
+            <div id="fileList" class="mt-4 space-y-2"></div>
+
+            <div id="processingAnimation" class="hidden text-center mt-8">
+                <div class="loading-spinner inline-block w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
+                <p class="mt-4 text-gray-600">Analyzing your documents...</p>
+            </div>
+        </div>
+
+        <div id="resultsSection" class="hidden max-w-4xl mx-auto mt-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Analysis Results</h3>
+                    <div class="flex gap-4">
+                        <select id="yearFilter" class="border rounded p-2">
+                            <option value="">Filter by Year</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                        </select>
+                        <select id="subjectFilter" class="border rounded p-2">
+                            <option value="">Filter by Subject</option>
+                            <option value="math">Mathematics</option>
+                            <option value="physics">Physics</option>
+                            <option value="chemistry">Chemistry</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="analysisChart" class="w-full h-64"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Login</h3>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email</label>
+                    <input type="email" required class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" required class="w-full p-2 border rounded">
+                </div>
+                <div class="flex justify-between items-center">
+                    <a href="#" class="text-sm text-indigo-600">Forgot Password?</a>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded">Login</button>
+                </div>
+                <button type="button" class="w-full p-2 border rounded flex items-center justify-center gap-2">
+                    <i class="bi bi-google"></i> Continue with Google
+                </button>
+            </form>
+            <button onclick="hideModal('loginModal')" class="absolute top-4 right-4">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div id="signupModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Sign Up</h3>
+            <form id="signupForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Name</label>
+                    <input type="text" required class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email</label>
+                    <input type="email" required class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" required class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Confirm Password</label>
+                    <input type="password" required class="w-full p-2 border rounded">
+                </div>
+                <button type="submit" class="w-full py-2 bg-indigo-600 text-white rounded">Sign Up</button>
+            </form>
+            <button onclick="hideModal('signupModal')" class="absolute top-4 right-4">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            const icon = darkModeToggle.querySelector('i');
+            icon.classList.toggle('bi-moon');
+            icon.classList.toggle('bi-sun');
+        });
+
+        // Drag and drop functionality
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-active');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'flex items-center justify-between p-2 bg-gray-100 rounded';
+                fileItem.innerHTML = `
+                    <span>${file.name}</span>
+                    <button class="text-red-500"><i class="bi bi-trash"></i></button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+
+            // Show processing animation
+            document.getElementById('processingAnimation').classList.remove('hidden');
+            
+            // Simulate processing and show results
+            setTimeout(() => {
+                document.getElementById('processingAnimation').classList.add('hidden');
+                document.getElementById('resultsSection').classList.remove('hidden');
+                initChart();
+            }, 2000);
+        }
+
+        // Chart initialization
+        function initChart() {
+            const ctx = document.getElementById('analysisChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Topic 1', 'Topic 2', 'Topic 3', 'Topic 4', 'Topic 5'],
+                    datasets: [{
+                        label: 'Question Frequency',
+                        data: [12, 19, 3, 5, 2],
+                        backgroundColor: '#4F46E5'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        // Modal functionality
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Authentication handling
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Simulate login
+            document.getElementById('authButtons').classList.add('hidden');
+            document.getElementById('userProfile').classList.remove('hidden');
+            document.getElementById('userName').textContent = 'John Doe';
+            hideModal('loginModal');
+        });
+
+        document.getElementById('signupForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Simulate signup
+            hideModal('signupModal');
+            showModal('loginModal');
+        });
+
+        function logout() {
+            document.getElementById('authButtons').classList.remove('hidden');
+            document.getElementById('userProfile').classList.add('hidden');
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
